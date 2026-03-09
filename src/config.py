@@ -1,32 +1,30 @@
-"""
-config.py — Central settings for kalshi-trader.
-Tweak these to adjust strategy parameters.
-"""
-
 import os
+from pathlib import Path
 
-# ── Credentials (set as env vars, never hardcode) ─────────────────────────────
-KALSHI_EMAIL    = os.getenv("KALSHI_EMAIL", "")
-KALSHI_PASSWORD = os.getenv("KALSHI_PASSWORD", "")
+# Auto-load .env from project root
+_env_path = Path(__file__).parent.parent / ".env"
+if _env_path.exists():
+    for line in _env_path.read_text().splitlines():
+        line = line.strip()
+        if line and not line.startswith("#") and "=" in line:
+            k, v = line.split("=", 1)
+            os.environ.setdefault(k.strip(), v.strip())
 
-# ── Dashboard ──────────────────────────────────────────────────────────────────
+KALSHI_KEY_ID   = os.getenv("KALSHI_KEY_ID", "")
+KALSHI_KEY_PATH = os.path.expanduser(os.getenv("KALSHI_KEY_PATH", "~/.kalshi/kalshi.key"))
+
 REFRESH_SECONDS = 30
 
-# ── Strategy: price ranges (0.0–1.0 scale) ────────────────────────────────────
-TYPE1_MIN = 0.80   # Near-locks: 80–90¢
+TYPE1_MIN = 0.80
 TYPE1_MAX = 0.90
-TYPE2_MIN = 0.55   # Value plays: 55–75¢
+TYPE2_MIN = 0.55
 TYPE2_MAX = 0.75
 
-HARD_PRICE_CEILING = 0.70   # Never buy above this
+HARD_PRICE_CEILING = 0.70
 
-# ── Markets to track ──────────────────────────────────────────────────────────
-SPORT_KEYWORDS = [
-    "tennis", "nba", "ncaab", "basketball",
-    "atp", "wta", "slam", "open",
-]
+SPORT_KEYWORDS = ["tennis", "nba", "ncaab", "basketball", "atp", "wta", "slam", "open"]
 
-# ── API ────────────────────────────────────────────────────────────────────────
-BASE_URL       = "https://trading-api.kalshi.com/trade-api/v2"
-REQUEST_TIMEOUT = 10
+BASE_URL           = "https://api.elections.kalshi.com/trade-api/v2"
+TRADING_URL        = BASE_URL  # trading-api.kalshi.com is deprecated
+REQUEST_TIMEOUT    = 10
 MARKET_FETCH_LIMIT = 200

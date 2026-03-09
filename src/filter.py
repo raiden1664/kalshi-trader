@@ -25,6 +25,25 @@ def classify(yes_price: float) -> str | None:
         return "Type 2"
     return None
 
+def get_all_tennis_markets(markets: list) -> list:
+    results = []
+    for m in markets:
+        title = (m.get("title") or "").lower()
+        if not any(kw in title for kw in ["tennis", "atp", "wta", "slam", "open"]):
+            continue
+        yes_price = (m.get("yes_ask") or 0) / 100
+        no_price  = (m.get("no_ask")  or 0) / 100
+        results.append({
+            "ticker":    m.get("ticker", ""),
+            "title":     (m.get("title") or "")[:65],
+            "yes_price": yes_price,
+            "no_price":  no_price,
+            "type":      classify(yes_price) or "—",
+            "volume":    m.get("volume", 0),
+        })
+    results.sort(key=lambda x: x["volume"], reverse=True)
+    return results
+
 
 def filter_markets(markets: list) -> list:
     """
