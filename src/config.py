@@ -24,7 +24,7 @@ HARD_PRICE_CEILING = 0.70
 
 SPORT_KEYWORDS = ["tennis", "nba", "ncaab", "basketball", "atp", "wta", "slam", "open"]
 
-BASE_URL           = "https://api.elections.kalshi.com/trade-api/v2"
-TRADING_URL        = BASE_URL  # trading-api.kalshi.com is deprecated
-REQUEST_TIMEOUT    = 10
-MARKET_FETCH_LIMIT = 200
+BASE_URL          = "https://api.elections.kalshi.com/trade-api/v2"
+TRADING_URL       = BASE_URL  # trading-api.kalshi.com is deprecated
+REQUEST_TIMEOUT   = 5         # was 10 — cuts worst-case wait in half
+MARKET_FETCH_LIMIT = 100      # 200 is overkill for most series
