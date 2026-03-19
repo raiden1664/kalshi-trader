@@ -7,4 +7,6 @@ venv/
 .env
 __pycache__/
 *.pyc
-.env.local
+.env.localanalyst/data/analyst.db
+analyst/__pycache__/
+analyst/data/
