@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Kalshi Match Simulator</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: #0d1117; color: #e6edf3; font-family: 'SF Mono', monospace; }
+#app { display: flex; flex-direction: column; height: 100vh; padding: 16px; gap: 12px; }
+#header { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+#header h1 { font-size: 13px; color: #58a6ff; letter-spacing: 2px; text-transform: uppercase; }
+select { background: #161b22; color: #e6edf3; border: 1px solid #30363d; padding: 6px 10px; font-size: 12px; border-radius: 6px; }
+#sport-sel { min-width: 140px; }
+#match-sel { min-width: 280px; }
+button { background: #238636; color: #fff; border: none; padding: 6px 14px; border-radius: 6px; cursor: pointer; font-size: 12px; }
+button:disabled { background: #30363d; cursor: default; color: #8b949e; }
+.speed-btn { background: #21262d; color: #8b949e; padding: 4px 8px; font-size: 11px; }
+.speed-btn.active { background: #58a6ff; color: #000; }
+#time-display { font-size: 11px; color: #58a6ff; margin-left: auto; }
+#progress-bar { height: 3px; background: #21262d; border-radius: 2px; }
+#progress-fill { height: 100%; background: #58a6ff; border-radius: 2px; width: 0%; transition: width 0.1s; }
+#main { display: flex; gap: 12px; flex: 1; min-height: 0; }
+#chart-panel { flex: 1; background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 12px; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+#chart-info { font-size: 11px; color: #8b949e; text-align: center; }
+#chart-wrap { flex: 1; position: relative; }
+#score-panel { width: 260px; display: flex; flex-direction: column; gap: 10px; }
+.card { background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 12px; }
+#match-title { font-size: 10px; color: #8b949e; margin-bottom: 8px; letter-spacing: 1px; text-align: center; }
+#players { display: flex; justify-content: space-between; margin-bottom: 10px; }
+.player-name { font-size: 12px; font-weight: bold; max-width: 110px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.player-name.winner { color: #3fb950; }
+#sets-row { text-align: center; font-size: 26px; font-weight: bold; margin-bottom: 4px; }
+#games-row { text-align: center; font-size: 16px; color: #58a6ff; }
+#point-row { text-align: center; font-size: 13px; color: #f0883e; margin-top: 4px; min-height: 18px; }
+#server-ind { font-size: 10px; color: #8b949e; text-align: center; margin-top: 4px; }
+#price-card { text-align: center; }
+#price-label { font-size: 10px; color: #8b949e; margin-bottom: 4px; letter-spacing: 1px; }
+#price-val { font-size: 34px; font-weight: bold; color: #58a6ff; }
+#price-val.up { color: #3fb950; }
+#price-val.down { color: #f85149; }
+#price-delta { font-size: 12px; min-height: 16px; margin-top: 2px; }
+#events-card { flex: 1; overflow: hidden; display: flex; flex-direction: column; min-height: 0; }
+#events-title { font-size: 10px; color: #8b949e; margin-bottom: 6px; letter-spacing: 1px; }
+#events-list { flex: 1; overflow-y: auto; }
+.ev { font-size: 11px; padding: 4px 0; border-bottom: 1px solid #21262d; line-height: 1.4; }
+.ev .t { color: #8b949e; font-size: 10px; }
+.ev.set .d { color: #3fb950; font-weight: bold; }
+.ev.game .d { color: #58a6ff; }
+.ev.spike .d { color: #f0883e; }
+.ev.point .d { color: #8b949e; font-size: 10px; }
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="header">
+    <h1>⚡ Kalshi Simulator</h1>
+    <select id="sport-sel">
+      <option value="">All Sports</option>
+      <option value="tennis_atp">ATP Tennis</option>
+      <option value="tennis_wta">WTA Tennis</option>
+      <option value="ncaab_men">NCAAB Men</option>
+      <option value="ncaab_women">NCAAB Women</option>
+      <option value="ahl">AHL Hockey</option>
+      <option value="shl">SHL Sweden</option>
+      <option value="liiga">Liiga Finland</option>
+      <option value="nbl">NBL Australia</option>
+      <option value="cba">CBA China</option>
+      <option value="kbl">KBL Korea</option>
+      <option value="aba">ABA League</option>
+      <option value="acb">ACB Spain</option>
+      <option value="bbl">BBL Germany</option>
+      <option value="vtb">VTB League</option>
+      <option value="fiba">FIBA</option>
+    </select>
+    <select id="match-sel"><option value="">— Select a match —</option></select>
+    <button id="btn-play" disabled>▶ Play</button>
+    <button id="btn-reset" disabled>↺</button>
+    <button class="speed-btn" data-speed="1">1x</button>
+    <button class="speed-btn active" data-speed="2">2x</button>
+    <button class="speed-btn" data-speed="5">5x</button>
+    <button class="speed-btn" data-speed="10">10x</button>
+    <button class="speed-btn" data-speed="30">30x</button>
+    <span id="time-display"></span>
+  </div>
+  <div id="progress-bar"><div id="progress-fill"></div></div>
+  <div id="main">
+    <div id="chart-panel">
+      <div id="chart-info">Select a match to begin</div>
+      <div id="chart-wrap"><canvas id="chart"></canvas></div>
+    </div>
+    <div id="score-panel">
+      <div class="card">
+        <div id="match-title">SELECT A MATCH</div>
+        <div id="players">
+          <span class="player-name" id="p1">—</span>
+          <span class="player-name" id="p2">—</span>
+        </div>
+        <div id="sets-row">— : —</div>
+        <div id="games-row">— : —</div>
+        <div id="point-row">— : —</div>
+        <div id="server-ind">—</div>
+      </div>
+      <div class="card" id="price-card">
+        <div id="price-label">CURRENT PRICE (YES)</div>
+        <div id="price-val">—</div>
+        <div id="price-delta"></div>
+      </div>
+      <div class="card" id="events-card">
+        <div id="events-title">KEY EVENTS</div>
+        <div id="events-list"></div>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+let chart, frames=[], idx=0, timer=null, data=null, speedMult=2;
+
+function g(id){ return document.getElementById(id); }
+
+// Init chart
+const ctx = g('chart').getContext('2d');
+chart = new Chart(ctx, {
+  type:'line',
+  data:{labels:[],datasets:[
+    {label:'Price',data:[],borderColor:'#58a6ff',backgroundColor:'rgba(88,166,255,0.08)',borderWidth:2,pointRadius:0,fill:true,tension:0.3},
+    {label:'Set Win',data:[],borderColor:'transparent',backgroundColor:'#3fb950',pointRadius:9,pointStyle:'triangle',showLine:false},
+    {label:'Spike',data:[],borderColor:'transparent',backgroundColor:'#f0883e',pointRadius:6,showLine:false}
+  ]},
+  options:{
+    responsive:true,maintainAspectRatio:false,animation:{duration:0},
+    scales:{
+      x:{ticks:{color:'#8b949e',maxTicksLimit:8,font:{size:10}},grid:{color:'#21262d'}},
+      y:{min:0,max:1,ticks:{color:'#8b949e',callback:v=>(v*100).toFixed(0)+'¢',font:{size:10}},grid:{color:'#21262d'}}
+    },
+    plugins:{legend:{display:false}}
+  }
+});
+
+// Speed buttons
+document.querySelectorAll('.speed-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.speed-btn').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    speedMult = parseInt(btn.dataset.speed);
+    if(timer){ clearInterval(timer); timer=null; startTimer(); }
+  });
+});
+
+// Load matches by sport
+async function loadMatches(sport='tennis_atp'){
+  const url = sport ? `/api/matches?sport=${sport}` : '/api/matches';
+  const r = await fetch(url);
+  const matches = await r.json();
+  const s = g('match-sel');
+  s.innerHTML = '<option value="">— Select a match —</option>';
+  matches.filter(m=>m.has_scores).forEach(m=>{
+    const o = document.createElement('option');
+    o.value = m.ticker;
+    const p = m.ticker.split('-');
+    o.textContent = p.slice(1).join(' ') + ' [' + (m.result||'?').toUpperCase() + ']';
+    s.appendChild(o);
+  });
+  if(s.options.length===1) s.innerHTML='<option>No matches with score data</option>';
+  g('chart-info').textContent = `${matches.filter(m=>m.has_scores).length} matches loaded`;
+}
+
+// Load match data
+async function loadMatch(ticker){
+  const r = await fetch('/api/match/'+ticker);
+  data = await r.json();
+  buildFrames();
+  reset();
+  const info = data.match_info || {};
+  g('match-title').textContent = info.player_home ? info.player_home+' vs '+info.player_away : ticker;
+  g('p1').textContent = info.player_home || 'Home';
+  g('p2').textContent = info.player_away || 'Away';
+  g('btn-play').disabled = false;
+  g('btn-reset').disabled = false;
+  g('chart-info').textContent = `${data.candles.length} candles | ${data.score_events.length} score events`;
+}
+
+function buildFrames(){
+  const candles = data.candles;
+  if(!candles.length) return;
+  const info = data.match_info || {};
+  const ms = info.start_ts || candles[0].end_ts;
+  const me = candles[candles.length-1].end_ts;
+  const dur = me - ms || 1;
+
+  frames = candles.map(c=>({
+    ts: c.end_ts,
+    price: parseFloat(c.price_close) || ((parseFloat(c.yes_bid_close)+parseFloat(c.yes_ask_close))/2) || null,
+    playPos: (c.end_ts-ms)/dur
+  })).filter(f=>f.price!==null);
+
+  // Mark spikes
+  for(let i=1;i<frames.length;i++){
+    const d=frames[i].price-frames[i-1].price;
+    if(Math.abs(d)>0.04){frames[i].spike=true;frames[i].delta=d;}
+  }
+
+  // Map score events by estimated_ts to nearest candle
+  const scoreEvs = data.score_events||[];
+  scoreEvs.forEach(se=>{
+    const pp=(se.estimated_ts-ms)/dur;
+    let b={idx:0,dist:Infinity};
+    frames.forEach((f,i)=>{const d=Math.abs(f.playPos-pp);if(d<b.dist)b={idx:i,dist:d};});
+    if(!frames[b.idx].scoreEvents) frames[b.idx].scoreEvents=[];
+    frames[b.idx].scoreEvents.push(se);
+  });
+}
+
+function reset(){
+  if(timer){clearInterval(timer);timer=null;}
+  g('btn-play').textContent='▶ Play';
+  idx=0;
+  chart.data.labels=[];
+  chart.data.datasets.forEach(d=>d.data=[]);
+  chart.update();
+  g('events-list').innerHTML='';
+  g('progress-fill').style.width='0%';
+  g('price-val').textContent='—';
+  g('price-val').className='';
+  g('price-delta').textContent='';
+  g('sets-row').textContent='— : —';
+  g('games-row').textContent='— : —';
+  g('point-row').textContent='— : —';
+  g('server-ind').textContent='—';
+  g('time-display').textContent='';
+}
+
+function startTimer(){
+  const ms = Math.max((2*60*1000/speedMult)/frames.length, 10);
+  timer = setInterval(()=>{
+    if(idx>=frames.length){clearInterval(timer);timer=null;g('btn-play').textContent='✓ Done';showResult();return;}
+    renderFrame(idx++);
+  }, ms);
+}
+
+function play(){
+  if(timer){clearInterval(timer);timer=null;g('btn-play').textContent='▶ Play';return;}
+  if(!frames.length)return;
+  g('btn-play').textContent='⏸ Pause';
+  startTimer();
+}
+
+function renderFrame(i){
+  const f=frames[i];
+  const ts=new Date(f.ts*1000).toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit',timeZone:'UTC'});
+
+  chart.data.labels.push(ts);
+  chart.data.datasets[0].data.push(f.price);
+  const ses = f.scoreEvents||[];
+  const hasSetWin = ses.some(s=>s.event_type==='set_win');
+  if(hasSetWin) chart.data.datasets[1].data.push({x:ts,y:f.price});
+  if(f.spike) chart.data.datasets[2].data.push({x:ts,y:f.price});
+  chart.update('none');
+
+  g('progress-fill').style.width=((i/frames.length)*100)+'%';
+  g('time-display').textContent=ts+' UTC';
+
+  const cents=(f.price*100).toFixed(1);
+  const pv=g('price-val');
+  pv.textContent=cents+'¢';
+  pv.className=f.spike?(f.delta>0?'up':'down'):'';
+  g('price-delta').textContent=f.spike?(f.delta>0?'+':'')+((f.delta||0)*100).toFixed(1)+'¢':'';
+  g('price-delta').style.color=f.spike?(f.delta>0?'#3fb950':'#f85149'):'';
+
+  // Update score for each event at this candle
+  ses.forEach(se=>updateScore(se,ts,f));
+
+  // Log spikes
+  if(f.spike&&Math.abs(f.delta||0)>0.06)
+    addEv('spike',ts,'⚡ '+(f.delta>0?'+':'')+((f.delta||0)*100).toFixed(1)+'¢ → '+cents+'¢');
+}
+
+function updateScore(se,ts,f){
+  const ht=g('p1').textContent;
+  const at=g('p2').textContent;
+  const scorer=se.scorer==='home'?ht:at;
+  const server=se.server==='home'?ht:at;
+
+  g('sets-row').textContent=(se.home_sets||0)+' : '+(se.away_sets||0);
+  g('games-row').textContent=(se.home_games||0)+' : '+(se.away_games||0);
+  g('server-ind').textContent=server?'🎾 Serving: '+server:'—';
+
+  // Show point score or game score
+  if(se.event_type==='point'){
+    g('point-row').textContent=(se.home_point||'0')+' : '+(se.away_point||'0');
+  } else if(se.event_type==='game_win'){
+    g('point-row').textContent='Game → '+scorer;
+    addEv('game',ts,'Game '+(se.home_games||0)+'-'+(se.away_games||0)+' → '+scorer+' @ '+(f.price*100).toFixed(1)+'¢');
+  } else if(se.event_type==='set_win'){
+    g('point-row').textContent='SET '+se.set_num+' → '+scorer;
+    addEv('set',ts,'SET '+(se.set_num||1)+' → '+scorer+' ('+(se.home_sets||0)+'-'+(se.away_sets||0)+') @ '+(f.price*100).toFixed(1)+'¢');
+  }
+}
+
+function addEv(cls,ts,desc){
+  const l=g('events-list');
+  const d=document.createElement('div');
+  d.className='ev '+cls;
+  d.innerHTML='<div class="t">'+ts+'</div><div class="d">'+desc+'</div>';
+  l.prepend(d);
+}
+
+function showResult(){
+  const info=data.match_info||{};
+  const w=info.winner==='home'?info.player_home:info.player_away;
+  g('p1').className='player-name'+(info.winner==='home'?' winner':'');
+  g('p2').className='player-name'+(info.winner==='away'?' winner':'');
+  if(w)addEv('set','','🏆 '+w+' wins');
+}
+
+// Events
+g('sport-sel').addEventListener('change',e=>loadMatches(e.target.value));
+g('match-sel').addEventListener('change',e=>{if(e.target.value)loadMatch(e.target.value);});
+g('btn-play').addEventListener('click',play);
+g('btn-reset').addEventListener('click',reset);
+
+// Default load
+loadMatches('tennis_atp');
+</script>
+</body>
+</html>
